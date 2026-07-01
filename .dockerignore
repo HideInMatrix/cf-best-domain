@@ -1,0 +1,9 @@
+.git
+.github
+.cache
+bin
+dist
+coverage.out
+*.log
+Dockerfile
+README.md
