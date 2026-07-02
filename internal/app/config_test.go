@@ -12,6 +12,13 @@ func TestNormalizeHostAcceptsURL(t *testing.T) {
 	}
 }
 
+func TestNormalizeUsesDefaultTestHost(t *testing.T) {
+	cfg := Config{TestPath: "/cdn-cgi/trace"}.Normalized()
+	if cfg.TestHost != DefaultTestHost {
+		t.Fatalf("默认测速域名 = %q，期望 %q", cfg.TestHost, DefaultTestHost)
+	}
+}
+
 func TestValidateRequiresDNSConfigWhenUpdating(t *testing.T) {
 	cfg := Config{
 		TestHost:      "www.example.com",

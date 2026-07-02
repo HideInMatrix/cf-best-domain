@@ -2,7 +2,7 @@
 
 ## 中文说明
 
-`cf-best-domain` 是一个 Go 编写的 Cloudflare IP 优选工具。它会拉取 Cloudflare 官方 IPv4 段，随机抽样候选 IP，并对每个 IP 做 TCP 连接测速和 HTTPS 访问测速，选出当前网络下最优的 Cloudflare 边缘 IP。确认结果后，它可以自动把你自己的 DNS-only A 记录更新为这个最优 IP。
+`cf-best-domain` 是一个 Go 编写的 Cloudflare IP 优选工具。它会拉取 Cloudflare 官方 IPv4 段，随机抽样候选 IP，并对每个 IP 做 TCP 连接测速和 HTTPS 访问测速，选出当前网络下最优的 Cloudflare 边缘 IP。默认情况下会使用 `speed.cloudflare.com` 作为通用测速域名；如果你传入自己的 Cloudflare 代理域名，则会按你的业务域名测速。确认结果后，它可以自动把你自己的 DNS-only A 记录更新为这个最优 IP。
 
 项目的命令行显示、测速结果表格和“默认展示最快前 10 个结果”的体验参考了 [XIU2/CloudflareSpeedTest](https://github.com/XIU2/CloudflareSpeedTest)。本项目当前重点放在 IPv4 抽样测速和 Cloudflare DNS A 记录自动更新。
 
@@ -20,24 +20,33 @@
 
 ### Cloudflare 准备
 
-需要准备这些环境变量：
+如果只是测速，不需要准备 Cloudflare API Token，也不强制传 `-host`。如果要自动更新 DNS，需要准备这些环境变量：
 
 ```bash
 export CF_API_TOKEN="你的 Cloudflare API Token"
 export CF_ZONE_ID="你的 Zone ID"
 export CF_RECORD="cf-best.example.com"
-export TEST_HOST="www.example.com"
+export TEST_HOST="www.example.com" # 可选，不填则使用 speed.cloudflare.com
 ```
 
 说明：
 
 - `CF_RECORD`：要自动更新的优选域名，建议 DNS-only。
-- `TEST_HOST`：用于测速的已接入 Cloudflare 且开启代理的域名。
+- `TEST_HOST`：可选；用于测速的已接入 Cloudflare 且开启代理的域名。不填时使用 `speed.cloudflare.com`。
 - `CF_API_TOKEN`：建议只授予对应 Zone 的 DNS 编辑权限。
 
 ### 本地测速
 
 先只测速，不更新 DNS：
+
+```bash
+go run . \
+  -sample 5 \
+  -max 200 \
+  -c 50
+```
+
+如果要按你自己的 Cloudflare 代理域名测速：
 
 ```bash
 go run . \
@@ -47,10 +56,12 @@ go run . \
   -c 50
 ```
 
+fish / zsh / bash 多行命令要注意：第一行结尾也要有 `\`。如果写成 `go run .` 后直接换行，下一行的 `-sample` 会被 shell 当成一个新命令。
+
 输出 JSON：
 
 ```bash
-go run . -host www.example.com -output json
+go run . -output json
 ```
 
 ### 更新 DNS
@@ -92,7 +103,7 @@ go run . -update -interval 30m
 
 | 参数 | 环境变量 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `-host` | `TEST_HOST` | 空 | 用于 HTTPS 测速的 Cloudflare 代理域名 |
+| `-host` | `TEST_HOST` | `speed.cloudflare.com` | 用于 HTTPS 测速的 Cloudflare 代理域名 |
 | `-path` | `TEST_PATH` | `/cdn-cgi/trace` | HTTPS 测试路径 |
 | `-sample` | `SAMPLE` / `CFBD_SAMPLE` | `5` | 每个 CIDR 抽样 IP 数 |
 | `-max` | `MAX` / `CFBD_MAX` | `200` | 最大候选 IP 数 |
@@ -122,6 +133,12 @@ docker build -t cf-best-domain:dev .
 ```
 
 只测速：
+
+```bash
+docker run --rm cf-best-domain:dev
+```
+
+按自己的 Cloudflare 代理域名测速：
 
 ```bash
 docker run --rm \

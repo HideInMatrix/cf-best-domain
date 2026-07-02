@@ -70,7 +70,7 @@ func parseConfig(args []string) (app.Config, bool, error) {
 		Proxied:       envBoolAny([]string{"CF_PROXIED", "CFBD_PROXIED"}, false),
 		TTL:           envIntAny([]string{"CF_TTL", "CFBD_TTL"}, 60),
 		Comment:       envString("CF_COMMENT", "由 cf-best-domain 自动维护"),
-		TestHost:      envString("TEST_HOST", ""),
+		TestHost:      envString("TEST_HOST", app.DefaultTestHost),
 		TestPath:      envString("TEST_PATH", "/cdn-cgi/trace"),
 		TestPort:      envString("TEST_PORT", "443"),
 		CIDRFile:      envString("CFBD_CIDR_FILE", ""),
@@ -136,11 +136,11 @@ func printUsage(fs *flag.FlagSet, cfg app.Config) {
 	fmt.Fprintln(fs.Output(), "扫描 Cloudflare IPv4 段，测试 TCP/HTTPS 延迟，选出最快 IP，并可更新 DNS-only A 记录。")
 	fmt.Fprintln(fs.Output())
 	fmt.Fprintln(fs.Output(), "用法：")
-	fmt.Fprintln(fs.Output(), "  cf-best-domain -host www.example.com")
+	fmt.Fprintln(fs.Output(), "  cf-best-domain")
 	fmt.Fprintln(fs.Output(), "  cf-best-domain -host www.example.com -update")
 	fmt.Fprintln(fs.Output())
 	fmt.Fprintln(fs.Output(), "参数：")
-	fmt.Fprintf(fs.Output(), "  -host 文本          用于 HTTPS 测速的 Cloudflare 代理域名（默认：%q）\n", cfg.TestHost)
+	fmt.Fprintf(fs.Output(), "  -host 文本          用于 HTTPS 测速的 Cloudflare 代理域名；不传则使用通用测速域名（默认：%q）\n", cfg.TestHost)
 	fmt.Fprintf(fs.Output(), "  -path 文本          HTTPS 测速路径（默认：%q）\n", cfg.TestPath)
 	fmt.Fprintf(fs.Output(), "  -port 文本          Cloudflare 边缘节点测速端口（默认：%q）\n", cfg.TestPort)
 	fmt.Fprintf(fs.Output(), "  -sample 数字        每个 CIDR 随机抽样的 IP 数量（默认：%d）\n", cfg.SampleEach)

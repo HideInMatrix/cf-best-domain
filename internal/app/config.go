@@ -13,6 +13,7 @@ import (
 const (
 	DefaultCloudflareAPIBase = "https://api.cloudflare.com/client/v4"
 	DefaultCloudflareIPv4URL = "https://www.cloudflare.com/ips-v4"
+	DefaultTestHost          = "speed.cloudflare.com"
 )
 
 type Config struct {
@@ -70,6 +71,9 @@ func (c Config) Normalized() Config {
 	if c.CIDRURL == "" {
 		c.CIDRURL = DefaultCloudflareIPv4URL
 	}
+	if c.TestHost == "" {
+		c.TestHost = DefaultTestHost
+	}
 	if c.TestPath == "" {
 		c.TestPath = "/cdn-cgi/trace"
 	}
@@ -93,9 +97,6 @@ func (c Config) Normalized() Config {
 
 func (c Config) Validate() error {
 	var errs []error
-	if c.TestHost == "" {
-		errs = append(errs, errors.New("缺少 TEST_HOST 环境变量或 -host 参数"))
-	}
 	if _, err := strconv.Atoi(c.TestPort); err != nil {
 		errs = append(errs, fmt.Errorf("测速端口 %q 无效", c.TestPort))
 	}
