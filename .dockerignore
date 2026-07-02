@@ -1,6 +1,8 @@
 .git
 .github
 .cache
+.env
+.env.local
 bin
 dist
 coverage.out

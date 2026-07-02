@@ -3,6 +3,10 @@ services:
     image: ghcr.io/hideinmatrix/cf-best-domain:latest
     container_name: cf-best-domain
     restart: unless-stopped
+    command:
+      - -update
+      - -interval
+      - ${CFBD_INTERVAL:-30m}
     env_file:
       - .env
     environment:

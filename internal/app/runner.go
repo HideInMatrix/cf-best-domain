@@ -21,6 +21,7 @@ func Run(ctx context.Context, cfg Config, w io.Writer) error {
 		if err := RunOnce(ctx, cfg, w); err != nil {
 			fmt.Fprintf(w, "测速失败：%v\n", err)
 		}
+		fmt.Fprintf(w, "等待 %s 后开始下一轮测速...\n", cfg.Interval)
 		select {
 		case <-ctx.Done():
 			return ctx.Err()

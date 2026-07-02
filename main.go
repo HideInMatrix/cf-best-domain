@@ -176,14 +176,14 @@ func boolText(value bool) string {
 }
 
 func envString(key, fallback string) string {
-	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+	if value := cleanEnvValue(os.Getenv(key)); value != "" {
 		return value
 	}
 	return fallback
 }
 
 func envInt(key string, fallback int) int {
-	value := strings.TrimSpace(os.Getenv(key))
+	value := cleanEnvValue(os.Getenv(key))
 	if value == "" {
 		return fallback
 	}
@@ -196,7 +196,7 @@ func envInt(key string, fallback int) int {
 
 func envIntAny(keys []string, fallback int) int {
 	for _, key := range keys {
-		value := strings.TrimSpace(os.Getenv(key))
+		value := cleanEnvValue(os.Getenv(key))
 		if value == "" {
 			continue
 		}
@@ -209,12 +209,12 @@ func envIntAny(keys []string, fallback int) int {
 }
 
 func envBool(key string, fallback bool) bool {
-	value := strings.TrimSpace(os.Getenv(key))
+	value := cleanEnvValue(os.Getenv(key))
 	if value == "" {
 		return fallback
 	}
-	parsed, err := strconv.ParseBool(value)
-	if err != nil {
+	parsed, ok := parseBool(value)
+	if !ok {
 		return fallback
 	}
 	return parsed
@@ -222,12 +222,12 @@ func envBool(key string, fallback bool) bool {
 
 func envBoolAny(keys []string, fallback bool) bool {
 	for _, key := range keys {
-		value := strings.TrimSpace(os.Getenv(key))
+		value := cleanEnvValue(os.Getenv(key))
 		if value == "" {
 			continue
 		}
-		parsed, err := strconv.ParseBool(value)
-		if err == nil {
+		parsed, ok := parseBool(value)
+		if ok {
 			return parsed
 		}
 	}
@@ -235,7 +235,7 @@ func envBoolAny(keys []string, fallback bool) bool {
 }
 
 func envDuration(key string, fallback time.Duration) time.Duration {
-	value := strings.TrimSpace(os.Getenv(key))
+	value := cleanEnvValue(os.Getenv(key))
 	if value == "" {
 		return fallback
 	}
@@ -267,7 +267,7 @@ func (d durationValue) Set(value string) error {
 }
 
 func parseFlexibleDuration(value string) (time.Duration, error) {
-	value = strings.TrimSpace(value)
+	value = cleanEnvValue(value)
 	if value == "" {
 		return 0, fmt.Errorf("时长不能为空")
 	}
@@ -275,4 +275,26 @@ func parseFlexibleDuration(value string) (time.Duration, error) {
 		return time.Duration(seconds) * time.Second, nil
 	}
 	return time.ParseDuration(value)
+}
+
+func cleanEnvValue(value string) string {
+	value = strings.TrimSpace(value)
+	if len(value) >= 2 {
+		first, last := value[0], value[len(value)-1]
+		if (first == '"' && last == '"') || (first == '\'' && last == '\'') {
+			value = value[1 : len(value)-1]
+		}
+	}
+	return strings.TrimSpace(value)
+}
+
+func parseBool(value string) (bool, bool) {
+	switch strings.ToLower(cleanEnvValue(value)) {
+	case "1", "t", "true", "y", "yes", "on", "enable", "enabled", "是", "真", "开启", "启用":
+		return true, true
+	case "0", "f", "false", "n", "no", "off", "disable", "disabled", "否", "假", "关闭", "禁用":
+		return false, true
+	default:
+		return false, false
+	}
 }

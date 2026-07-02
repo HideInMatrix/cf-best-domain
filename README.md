@@ -135,12 +135,6 @@ docker build -t cf-best-domain:dev .
 只测速：
 
 ```bash
-docker run --rm cf-best-domain:dev
-```
-
-按自己的 Cloudflare 代理域名测速：
-
-```bash
 docker run --rm \
   -e TEST_HOST="www.example.com" \
   cf-best-domain:dev
@@ -156,6 +150,35 @@ docker run --rm \
   -e TEST_HOST="www.example.com" \
   cf-best-domain:dev -update
 ```
+
+### 1Panel 部署
+
+项目提供了 `docker-compose.yml`，适合在 1Panel 的容器编排里使用。Compose 默认会传入：
+
+```text
+-update -interval ${CFBD_INTERVAL:-30m}
+```
+
+也就是容器启动后会常驻运行，每隔 30 分钟测速并更新一次 DNS。你可以在同目录创建 `.env`：
+
+```env
+CF_API_TOKEN=你的 Cloudflare API Token
+CF_ZONE_ID=你的 Cloudflare Zone ID
+CF_RECORD=cf-best.example.com
+TEST_HOST=www.example.com
+
+CFBD_INTERVAL=30m
+CFBD_SAMPLE=14
+CFBD_MAX=200
+CFBD_CONCURRENCY=50
+CFBD_TIMEOUT=3s
+CFBD_OUTPUT=table
+CFBD_TOP=10
+CFBD_TTL=60
+CFBD_PROXIED=false
+```
+
+注意：`TEST_HOST` 必须是已经接入 Cloudflare 且开启代理的域名；`CF_RECORD` 是程序要创建或更新的 DNS-only A 记录。
 
 ### 使用 git tag 发布镜像
 
