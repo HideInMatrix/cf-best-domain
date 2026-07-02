@@ -1,0 +1,12 @@
+services:
+  cf-best-domain:
+    image: ghcr.io/micromatrix/cf-best-domain:latest
+    container_name: cf-best-domain
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      TZ: Asia/Shanghai
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
