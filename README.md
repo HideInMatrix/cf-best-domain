@@ -169,7 +169,6 @@ git push origin v1.0.0
 镜像标签示例：
 
 ```text
-ghcr.io/<owner>/<repo>:v1.0.0
 ghcr.io/<owner>/<repo>:1.0.0
-ghcr.io/<owner>/<repo>:1.0
+ghcr.io/<owner>/<repo>:latest
 ```

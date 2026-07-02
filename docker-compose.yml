@@ -1,6 +1,6 @@
 services:
   cf-best-domain:
-    image: ghcr.io/micromatrix/cf-best-domain:latest
+    image: ghcr.io/hideinmatrix/cf-best-domain:latest
     container_name: cf-best-domain
     restart: unless-stopped
     env_file:
