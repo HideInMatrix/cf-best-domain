@@ -50,8 +50,14 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if err := app.Run(ctx, cfg, os.Stdout); err != nil && !errors.Is(err, context.Canceled) {
-		fmt.Fprintf(os.Stderr, "程序运行失败：%v\n", err)
+	var runErr error
+	if cfg.API {
+		runErr = app.Serve(ctx, cfg, os.Stdout)
+	} else {
+		runErr = app.Run(ctx, cfg, os.Stdout)
+	}
+	if runErr != nil && !errors.Is(runErr, context.Canceled) {
+		fmt.Fprintf(os.Stderr, "程序运行失败：%v\n", runErr)
 		os.Exit(1)
 	}
 }
@@ -84,6 +90,8 @@ func parseConfig(args []string) (app.Config, bool, error) {
 		Output:        envString("CFBD_OUTPUT", "table"),
 		Top:           envIntAny([]string{"TOP", "CFBD_TOP"}, 10),
 		UserAgent:     envString("CFBD_USER_AGENT", "cf-best-domain/"+version),
+		API:           envBoolAny([]string{"CFBD_API"}, false),
+		Listen:        envString("CFBD_LISTEN", ":8080"),
 	}
 
 	var showVersion bool
@@ -101,6 +109,8 @@ func parseConfig(args []string) (app.Config, bool, error) {
 	fs.Var(durationValue{target: &cfg.Timeout}, "timeout", "单个 IP 探测超时时间，支持 3s 或纯数字秒数")
 	fs.StringVar(&cfg.Output, "output", cfg.Output, "输出格式：table 或 json")
 	fs.IntVar(&cfg.Top, "top", cfg.Top, "显示前 N 条测速结果")
+	fs.BoolVar(&cfg.API, "api", cfg.API, "启动 HTTP API 服务并常驻运行")
+	fs.StringVar(&cfg.Listen, "listen", cfg.Listen, "HTTP API 监听地址")
 	fs.BoolVar(&cfg.UpdateDNS, "update", cfg.UpdateDNS, "把最快 IP 更新到 Cloudflare DNS A 记录")
 	fs.StringVar(&cfg.APIToken, "token", cfg.APIToken, "Cloudflare API Token，建议使用 CF_API_TOKEN 环境变量")
 	fs.StringVar(&cfg.ZoneID, "zone", cfg.ZoneID, "Cloudflare Zone ID")
@@ -138,6 +148,7 @@ func printUsage(fs *flag.FlagSet, cfg app.Config) {
 	fmt.Fprintln(fs.Output(), "用法：")
 	fmt.Fprintln(fs.Output(), "  cf-best-domain")
 	fmt.Fprintln(fs.Output(), "  cf-best-domain -host www.example.com -update")
+	fmt.Fprintln(fs.Output(), "  cf-best-domain -api -update -interval 30m")
 	fmt.Fprintln(fs.Output())
 	fmt.Fprintln(fs.Output(), "参数：")
 	fmt.Fprintf(fs.Output(), "  -host 文本          用于 HTTPS 测速的 Cloudflare 代理域名；不传则使用通用测速域名（默认：%q）\n", cfg.TestHost)
@@ -149,6 +160,8 @@ func printUsage(fs *flag.FlagSet, cfg app.Config) {
 	fmt.Fprintf(fs.Output(), "  -timeout 时长       单个 IP 探测超时时间，支持 3s 或纯数字秒数（默认：%s）\n", cfg.Timeout)
 	fmt.Fprintf(fs.Output(), "  -output 文本        输出格式：table 或 json（默认：%q）\n", cfg.Output)
 	fmt.Fprintf(fs.Output(), "  -top 数字           显示前 N 条测速结果（默认：%d）\n", cfg.Top)
+	fmt.Fprintf(fs.Output(), "  -api                启动 HTTP API 服务并常驻运行（默认：%s）\n", boolText(cfg.API))
+	fmt.Fprintf(fs.Output(), "  -listen 文本        HTTP API 监听地址（默认：%q）\n", cfg.Listen)
 	fmt.Fprintf(fs.Output(), "  -update             把最快 IP 更新到 Cloudflare DNS A 记录（默认：%s）\n", boolText(cfg.UpdateDNS))
 	fmt.Fprintf(fs.Output(), "  -token 文本         Cloudflare API Token，建议使用 CF_API_TOKEN 环境变量\n")
 	fmt.Fprintf(fs.Output(), "  -zone 文本          Cloudflare Zone ID（默认：%q）\n", cfg.ZoneID)

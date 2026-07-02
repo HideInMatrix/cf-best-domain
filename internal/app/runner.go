@@ -31,14 +31,30 @@ func Run(ctx context.Context, cfg Config, w io.Writer) error {
 }
 
 func RunOnce(ctx context.Context, cfg Config, w io.Writer) error {
+	cfg = cfg.Normalized()
+	report, err := Scan(ctx, cfg)
+	if !report.CheckedAt.IsZero() {
+		if writeErr := WriteReport(w, cfg.Output, report, cfg.Top); writeErr != nil {
+			return writeErr
+		}
+	}
+	return err
+}
+
+func Scan(ctx context.Context, cfg Config) (ScanReport, error) {
+	cfg = cfg.Normalized()
+	if err := cfg.Validate(); err != nil {
+		return ScanReport{}, err
+	}
+
 	cidrs, err := LoadIPv4CIDRs(ctx, cfg)
 	if err != nil {
-		return err
+		return ScanReport{}, err
 	}
 
 	ips := SampleIPs(cidrs, cfg.SampleEach, cfg.MaxCandidates)
 	if len(ips) == 0 {
-		return fmt.Errorf("没有候选 IP")
+		return ScanReport{}, fmt.Errorf("没有候选 IP")
 	}
 
 	prober := Prober{
@@ -68,18 +84,17 @@ func RunOnce(ctx context.Context, cfg Config, w io.Writer) error {
 	}
 
 	if best == nil {
-		_ = WriteReport(w, cfg.Output, report, cfg.Top)
-		return fmt.Errorf("没有找到可用的 Cloudflare IP")
+		return report, fmt.Errorf("没有找到可用的 Cloudflare IP")
 	}
 
 	if cfg.UpdateDNS {
 		dnsClient := NewCloudflareDNS(cfg.APIBase, cfg.APIToken)
 		update, err := dnsClient.UpsertARecord(ctx, cfg.ZoneID, cfg.RecordName, best.IP, cfg.TTL, cfg.Proxied, cfg.Comment, cfg.CreateDNS)
 		if err != nil {
-			return err
+			return report, err
 		}
 		report.DNS = &update
 	}
 
-	return WriteReport(w, cfg.Output, report, cfg.Top)
+	return report, nil
 }

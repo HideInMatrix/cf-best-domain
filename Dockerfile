@@ -21,4 +21,6 @@ FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/cf-best-domain /cf-best-domain
 
 USER nonroot:nonroot
+EXPOSE 8080
 ENTRYPOINT ["/cf-best-domain"]
+CMD ["-api"]

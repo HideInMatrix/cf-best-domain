@@ -99,6 +99,32 @@ go run . -update -interval 30m
 */30 * * * * /usr/local/bin/cf-best-domain -update >> /var/log/cf-best-domain.log 2>&1
 ```
 
+### HTTP API
+
+启动 API 服务后，程序会立即执行一轮测速，把最近一次结果缓存在内存里；如果设置了 `-interval`，会按间隔刷新。`-interval 0` 时只在启动时测速一次，但服务会继续常驻，后续可以通过接口读取结果或手动触发刷新：
+
+```bash
+go run . -api -interval 30m
+```
+
+常用接口：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/healthz` | 健康检查 |
+| `GET` | `/api/best` | 返回当前最快 IP 和测速摘要；还没有结果时返回 `503` |
+| `GET` | `/api/ips?top=10` | 返回已筛选出的可用 IP 列表，按评分排序 |
+| `GET` | `/api/report` | 返回最近一次完整测速报告和运行状态 |
+| `POST` | `/api/scan` | 异步触发一轮新的测速；已有测速在运行时返回 `409` |
+
+示例：
+
+```bash
+curl http://127.0.0.1:8080/api/best
+curl 'http://127.0.0.1:8080/api/ips?top=5'
+curl -X POST http://127.0.0.1:8080/api/scan
+```
+
 ### 参数与环境变量
 
 | 参数 | 环境变量 | 默认值 | 说明 |
@@ -118,6 +144,8 @@ go run . -update -interval 30m
 | `-interval` | `CFBD_INTERVAL` | `0` | 定时运行间隔，`0` 表示只运行一次 |
 | `-output` | `CFBD_OUTPUT` | `table` | 输出格式：`table` 或 `json` |
 | `-top` | `TOP` / `CFBD_TOP` | `10` | 输出前 N 条结果 |
+| `-api` | `CFBD_API` | 关闭 | 启动 HTTP API 服务并常驻运行 |
+| `-listen` | `CFBD_LISTEN` | `:8080` | HTTP API 监听地址 |
 | `-cidr` | 无 | 空 | 手动指定 IPv4 CIDR，可重复 |
 | `-cidrs` | `CFBD_CIDRS` | 空 | 逗号/分号/换行分隔的 IPv4 CIDR |
 | `-cidr-file` | `CFBD_CIDR_FILE` | 空 | IPv4 CIDR 文件 |
@@ -132,23 +160,40 @@ go run . -update -interval 30m
 docker build -t cf-best-domain:dev .
 ```
 
-只测速：
+镜像默认启动 HTTP API 服务，并在启动时执行一轮测速：
 
 ```bash
 docker run --rm \
+  -p 8080:8080 \
   -e TEST_HOST="www.example.com" \
   cf-best-domain:dev
 ```
 
-测速并更新 DNS：
+读取当前最快 IP：
+
+```bash
+curl http://127.0.0.1:8080/api/best
+```
+
+如果想使用一次性 CLI 模式，可以在镜像名后显式传入参数，传入的参数会覆盖镜像默认的 `-api`：
 
 ```bash
 docker run --rm \
+  -e TEST_HOST="www.example.com" \
+  cf-best-domain:dev -output table
+```
+
+常驻运行、定时测速并更新 DNS：
+
+```bash
+docker run -d \
+  --name cf-best-domain \
+  -p 8080:8080 \
   -e CF_API_TOKEN="你的 Cloudflare API Token" \
   -e CF_ZONE_ID="你的 Zone ID" \
   -e CF_RECORD="cf-best.example.com" \
   -e TEST_HOST="www.example.com" \
-  cf-best-domain:dev -update
+  cf-best-domain:dev -api -update -interval 30m
 ```
 
 ### 1Panel 部署
@@ -156,10 +201,10 @@ docker run --rm \
 项目提供了 `docker-compose.yml`，适合在 1Panel 的容器编排里使用。Compose 默认会传入：
 
 ```text
--update -interval ${CFBD_INTERVAL:-30m}
+-api -update -listen ${CFBD_LISTEN:-:8080} -interval ${CFBD_INTERVAL:-30m}
 ```
 
-也就是容器启动后会常驻运行，每隔 30 分钟测速并更新一次 DNS。你可以在同目录创建 `.env`：
+也就是容器启动后会常驻提供 HTTP API，每隔 30 分钟测速并更新一次 DNS，并把接口映射到宿主机 `${CFBD_API_PORT:-8080}`。你可以在同目录创建 `.env`：
 
 ```env
 CF_API_TOKEN=你的 Cloudflare API Token
@@ -176,6 +221,8 @@ CFBD_OUTPUT=table
 CFBD_TOP=10
 CFBD_TTL=60
 CFBD_PROXIED=false
+CFBD_LISTEN=:8080
+CFBD_API_PORT=8080
 ```
 
 注意：`TEST_HOST` 必须是已经接入 Cloudflare 且开启代理的域名；`CF_RECORD` 是程序要创建或更新的 DNS-only A 记录。

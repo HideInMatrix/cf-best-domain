@@ -17,6 +17,9 @@ func TestNormalizeUsesDefaultTestHost(t *testing.T) {
 	if cfg.TestHost != DefaultTestHost {
 		t.Fatalf("默认测速域名 = %q，期望 %q", cfg.TestHost, DefaultTestHost)
 	}
+	if cfg.Listen != ":8080" {
+		t.Fatalf("默认监听地址 = %q，期望 :8080", cfg.Listen)
+	}
 }
 
 func TestValidateRequiresDNSConfigWhenUpdating(t *testing.T) {

@@ -4,9 +4,14 @@ services:
     container_name: cf-best-domain
     restart: unless-stopped
     command:
+      - -api
       - -update
+      - -listen
+      - ${CFBD_LISTEN:-:8080}
       - -interval
       - ${CFBD_INTERVAL:-30m}
+    ports:
+      - "${CFBD_API_PORT:-8080}:8080"
     env_file:
       - .env
     environment:

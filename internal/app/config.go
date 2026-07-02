@@ -49,6 +49,9 @@ type Config struct {
 	Output    string
 	Top       int
 	UserAgent string
+
+	API    bool
+	Listen string
 }
 
 func (c Config) Normalized() Config {
@@ -64,6 +67,7 @@ func (c Config) Normalized() Config {
 	c.Output = strings.ToLower(strings.TrimSpace(c.Output))
 	c.UserAgent = strings.TrimSpace(c.UserAgent)
 	c.Comment = strings.TrimSpace(c.Comment)
+	c.Listen = strings.TrimSpace(c.Listen)
 
 	if c.APIBase == "" {
 		c.APIBase = DefaultCloudflareAPIBase
@@ -91,6 +95,9 @@ func (c Config) Normalized() Config {
 	}
 	if c.Comment == "" {
 		c.Comment = "由 cf-best-domain 自动维护"
+	}
+	if c.Listen == "" {
+		c.Listen = ":8080"
 	}
 	return c
 }
